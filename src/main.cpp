@@ -1,8 +1,17 @@
-#include <iostream>
+#include "stdio.h"
+#include <png.h>
 
-using namespace std;
+#define X 10
+#define Y 10
 
 int main() {
-    cout << "Hello, world!" << endl;
+
+    FILE *fp;
+    fp =fopen("Icon.png","wb");
+    fclose(fp);
+
+    while(1){
+        printf("ping\n");
+    }
     return 0;
 }
