@@ -1,29 +1,110 @@
+/*************************************************************************
+ * 作成；H.niwa
+ * 参考；http://c-language-program.cocolog-nifty.com/blog/2010/03/bmp-4b2c.html
+*************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <time.h>
 
-#define xSize 512
-#define ySize 512
+#define PIXEL_NUM_X (512)                             /* 画像のXサイズ */
+#define PIXEL_NUM_Y (512)                             /* 画像のYサイズ */
+#define COLOR_BIT (24)                                /* 色ビット */
+#define PIC_DATA_SIZE (PIXEL_NUM_X * 3 * PIXEL_NUM_Y) /* bitmapのサイズ */
 
-unsigned char data[3][xSize][ySize] = {0};
+/* プロトタイプ宣言 */
+void createPic(unsigned char *b, int x, int y);
+int putBmpHeader(FILE *s, int x, int y, int c);
+int fputc2LowHigh(unsigned short d, FILE *s);
+int fputc4LowHigh(unsigned long d, FILE *s);
 
-unsigned char randdata;
-
-int fputc4LowHigh(unsigned long d, FILE *s)
+/*
+	メイン
+*/
+int main(int argc, char *argv[])
 {
-    putc(d & 0xFF, s);
-    putc((d >> CHAR_BIT) & 0xFF, s);
-    putc((d >> CHAR_BIT * 2) & 0xFF, s);
-    return putc((d >> CHAR_BIT * 3) & 0xFF, s);
+    FILE *f;
+    int r;
+    unsigned char *b;
+
+    /* bitmap用メモリを確保 */
+    b = malloc(PIC_DATA_SIZE);
+    if (b == NULL)
+    {
+        return EXIT_FAILURE;
+    }
+
+    /* 画像を生成 */
+    createPic(b, PIXEL_NUM_X, PIXEL_NUM_Y);
+
+    /* ファイルをオープン */
+    f = fopen("test.bmp", "wb");
+    if (f == NULL)
+    {
+        return EXIT_FAILURE;
+    }
+
+    /* ヘッダの書出 */
+    r = putBmpHeader(f, PIXEL_NUM_X, PIXEL_NUM_Y, COLOR_BIT);
+    if (!r)
+    {
+        fclose(f);
+        return EXIT_FAILURE;
+    }
+
+    /* bitmapの書出 */
+    r = fwrite(b, sizeof(unsigned char), PIC_DATA_SIZE, f);
+    if (r != PIC_DATA_SIZE)
+    {
+        fclose(f);
+        return EXIT_FAILURE;
+    }
+
+    /* ファイルをクローズし,処理終了 */
+    fclose(f);
+    return EXIT_SUCCESS;
 }
 
-int fputc2LowHigh(unsigned short d, FILE *s)
+/* 画像生成関数 */
+void createPic(unsigned char *b, int x, int y)
 {
-    putc(d & 0xFF, s);
-    return putc(d >> CHAR_BIT, s);
+    int i;
+    int j;
+
+    /* 乱数種設定 */
+    srand(time(NULL));
+
+    /* データを生成 */
+    for (i = 0; i < y; i++)
+    {
+
+        /* 1行分のデータを出力 */
+        for (j = 0; j < x; j++)
+        {
+            *b = rand() % 256;
+            b++;
+            *b = rand() % 256;
+            b++;
+            *b = rand() % 256;
+            b++;
+        }
+    }
 }
 
+/*
+	putBmpHeader BMPヘッダ書出
+	
+	BMPファイルのヘッダを書き出す
+
+	●戻り値
+		int:0…失敗, 1…成功
+	●引数
+		FILE *s:[i] 出力ストリーム
+		int x:[i] 画像Xサイズ(dot, 1〜)
+		int y:[i] 画像Yサイズ(dot, 1〜)
+		int c:[i] 色ビット数(bit/dot, 1 or 4 or 8 or 24)
+*/
 int putBmpHeader(FILE *s, int x, int y, int c)
 {
     int i;
@@ -120,33 +201,38 @@ int putBmpHeader(FILE *s, int x, int y, int c)
     return 1;
 }
 
-int main()
+/*
+	fputc2LowHigh 2バイトデータ書出(下位〜上位)
+	
+	2バイトのデータを下位〜上位の順で書き出す
+
+	●戻り値
+		int:EOF…失敗, EOF以外…成功
+	●引数
+		unsigned short d:[i] データ
+		FILE *s:[i] 出力ストリーム
+*/
+int fputc2LowHigh(unsigned short d, FILE *s)
 {
+    putc(d & 0xFF, s);
+    return putc(d >> CHAR_BIT, s);
+}
 
-    FILE *fp;
-    fp = fopen("icon.bmp", "w");
-    putBmpHeader(fp, xSize, ySize, 24);
+/*
+	fputc4LowHigh 4バイトデータ書出(下位〜上位)
+	
+	4バイトのデータを下位〜上位の順で書き出す
 
-    for (int i = 0; i < xSize; i++)
-    {
-        for (int j = 0; j < ySize; j++)
-        {
-            for (int k = 0; k < 3; k++)
-            {
-                if ((i == 0) || (j == 0))
-                {
-                    data[k][i][j] = rand() % 255 + 1;
-                }
-                else
-                {
-                    data[k][i][j] = (data[k][i][j - 1] + data[k][i][j - 1] + data[k][i][j - 1] + rand() % 255 + 1) / 4;
-                }
-
-                fprintf(fp, "%c", data[k][i][j]);
-            }
-        }
-    }
-    fclose(fp);
-    printf("Program end...");
-    return 0;
+	●戻り値
+		int:EOF…失敗, EOF以外…成功
+	●引数
+		unsigned long d:[i] データ
+		FILE *s:[i] 出力ストリーム
+*/
+int fputc4LowHigh(unsigned long d, FILE *s)
+{
+    putc(d & 0xFF, s);
+    putc((d >> CHAR_BIT) & 0xFF, s);
+    putc((d >> CHAR_BIT * 2) & 0xFF, s);
+    return putc((d >> CHAR_BIT * 3) & 0xFF, s);
 }
