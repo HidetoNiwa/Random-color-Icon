@@ -8,8 +8,11 @@
 #include <limits.h>
 #include <time.h>
 
-#define PIXEL_NUM_X (512)                             /* 画像のXサイズ */
-#define PIXEL_NUM_Y (512)                             /* 画像のYサイズ */
+#define PIXEL_NUM_X (512) /* 画像のXサイズ */
+#define PIXEL_NUM_Y (512) /* 画像のYサイズ */
+
+#define blockSize 64
+
 #define COLOR_BIT (24)                                /* 色ビット */
 #define PIC_DATA_SIZE (PIXEL_NUM_X * 3 * PIXEL_NUM_Y) /* bitmapのサイズ */
 
@@ -69,25 +72,54 @@ int main(int argc, char *argv[])
 /* 画像生成関数 */
 void createPic(unsigned char *b, int x, int y)
 {
-    int i;
-    int j;
+    unsigned char color[3];
 
     /* 乱数種設定 */
     srand(time(NULL));
 
-    /* データを生成 */
-    for (i = 0; i < y; i++)
-    {
+    unsigned char data[3][PIXEL_NUM_X][PIXEL_NUM_Y]; //出力データ
 
-        /* 1行分のデータを出力 */
-        for (j = 0; j < x; j++)
+    /* データを生成 */
+    for (int i = 0; i < (x + 1) / blockSize; i++)
+    {
+        for (int j = 0; j < (y + 1) / blockSize; j++)
         {
-            *b = rand() % 256;
-            b++;
-            *b = rand() % 256;
-            b++;
-            *b = rand() % 256;
-            b++;
+            for (int k = 0; k < 3; k++)
+            {
+                color[k] = rand() % 256;
+            }
+
+            for (int ii = 0; ii < blockSize; ii++)
+            {
+                if (ii + (i * blockSize) > x)
+                {
+                    break;
+                }
+                for (int jj = 0; jj < blockSize; jj++)
+                {
+                    if (jj + (j * blockSize) > y)
+                    {
+                        break;
+                    }
+                    for (int k = 0; k < 3; k++)
+                    {
+                        data[k][ii + (i * blockSize)][jj + (j * blockSize)] = color[k];
+                    }
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < y; i++)
+    {
+        /* 1行分のデータを出力 */
+        for (int j = 0; j < x; j++)
+        {
+            for (int k = 0; k < 3; k++)
+            {
+                *b = data[k][j][i];
+                b++;
+            }
         }
     }
 }
